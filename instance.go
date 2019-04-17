@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"os/exec"
 	"regexp"
@@ -20,21 +21,49 @@ type Instance interface {
 	Close() error
 }
 
+type Options struct {
+	ProjectId string
+	Port      int
+	Rules     string
+}
+
 type instance struct {
 	projectId             string
 	firestoreEmulatorHost string
 	child                 *exec.Cmd
 	startupTimeout        time.Duration
+	port                  int
+	rules                 string
 }
 
 func findGcloud() (string, error) {
 	return exec.LookPath("gcloud")
 }
 
-func NewInstance(projectId string) (Instance, error) {
+func NewInstance(options *Options) (Instance, error) {
+	var (
+		projectId = ""
+		port      = 0
+		rules     = ""
+	)
+	rand.Seed(time.Now().UnixNano())
+	if options == nil {
+		projectId = "test-app"
+		port = 20000 + rand.Intn(9999)
+	} else {
+		if options.ProjectId == "" {
+			projectId = "test-app"
+		}
+		if options.Port == 0 {
+			port = 20000 + rand.Intn(9999)
+		}
+		rules = options.Rules
+	}
 	i := &instance{
 		projectId:      projectId,
 		startupTimeout: 15 * time.Second,
+		port:           port,
+		rules:          rules,
 	}
 	if err := i.startChild(); err != nil {
 		return nil, err
@@ -78,7 +107,11 @@ func (i *instance) startChild() error {
 		"emulators",
 		"firestore",
 		"start",
+		"--host-port=" + fmt.Sprintf("localhost:%d", i.port),
 		"--project=" + i.projectId,
+	}
+	if i.rules != "" {
+		args = append(args, "--rules="+i.rules)
 	}
 	i.child = exec.Command(gcloud, args...)
 	i.child.Stdout = os.Stdout

@@ -26,20 +26,20 @@ type Context struct {
 	instances map[string]*instanceContext
 }
 
-func Setup(projectId string) (*firestore.Client, error) {
+func Setup(options *Options) (*firestore.Client, error) {
 	background := context.Background()
 	defaultContext.mutex.Lock()
 	defer defaultContext.mutex.Unlock()
-	ctx, ok := defaultContext.instances[projectId]
+	ctx, ok := defaultContext.instances[options.ProjectId]
 	if ok {
 		ctx.counter++
 		return ctx.client, nil
 	}
-	instance, err := NewInstance(projectId)
+	instance, err := NewInstance(options)
 	if err != nil {
 		return nil, err
 	}
-	client, err := firestore.NewClient(background, projectId)
+	client, err := firestore.NewClient(background, options.ProjectId)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func Setup(projectId string) (*firestore.Client, error) {
 		instance: instance,
 		client:   client,
 	}
-	defaultContext.instances[projectId] = c
+	defaultContext.instances[options.ProjectId] = c
 	return c.client, nil
 }
 

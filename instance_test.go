@@ -6,7 +6,7 @@ import (
 )
 
 func TestNewInstance(t *testing.T) {
-	instance, err := NewInstance("test")
+	instance, err := NewInstance(&Options{ProjectId: "test"})
 	if err != nil {
 		t.Errorf("failed to new instance: %v", err)
 	} else {
